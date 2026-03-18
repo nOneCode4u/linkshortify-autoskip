@@ -59,14 +59,6 @@ In ViolentMonkey, tap the script → **Check for updates** — it will pull the 
 
 ---
 
-## How it works (technical)
-
-LinkShortify runs a JavaScript countdown timer. Once the timer reaches zero, a button becomes active. The script polls every 500ms for that button to become clickable (not disabled, not showing "Please wait"), then triggers a click programmatically.
-
-v3 additionally hooks into `setTimeout`/`setInterval` to speed up the internal countdown clock itself.
-
----
-
 ## Disclaimer
 
 This script is for personal use to save time on links you are legitimately accessing. It does not bypass paywalls or access restricted content.
