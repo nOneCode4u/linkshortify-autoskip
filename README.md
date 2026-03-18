@@ -35,7 +35,6 @@
 | Kiwi | [Tampermonkey](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo), [Violentmonkey](https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegedbjckiignlkbdflefd) |
 | Edge | [Tampermonkey](https://www.tampermonkey.net/) |
 | Maxthon | [Violentmonkey](https://violentmonkey.github.io/get-it/) |
-| UC Browser | [Tampermonkey](https://www.tampermonkey.net/) |
 | Dolphin | [Tampermonkey](https://www.tampermonkey.net/) |
 
 **iOS**
