@@ -1,0 +1,2 @@
+# linkshortify-autoskip
+LinkShortify
