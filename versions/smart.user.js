@@ -1,0 +1,302 @@
+// ==UserScript==
+// @name         LinkShortify Auto-Skip
+// @namespace    https://github.com/nOneCode4u/linkshortify-autoskip
+// @version      2.1.0
+// @description  Automatically skips LinkShortify countdown and spoofs Chrome for verification pages
+// @author       nOneCode4u
+// @match        *://lksfy.com/*
+// @match        *://*.lksfy.com/*
+// @match        *://linkshortify.com/*
+// @match        *://*.linkshortify.com/*
+// @match        *://joker-verse.vercel.app/*
+// @grant        none
+// @run-at       document-start
+// @updateURL    https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/versions/smart.user.js
+// @downloadURL  https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/versions/smart.user.js
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    const HOST = window.location.hostname;
+    const IS_JOKER  = HOST.includes('joker-verse.vercel.app');
+    const IS_LKSFY  = HOST.includes('lksfy.com') || HOST.includes('linkshortify.com');
+
+    const log = (msg) => console.log('[LS-Skip]', msg);
+
+    // ═══════════════════════════════════════════════════════
+    // BLOCK A — CHROME SPOOF
+    // Runs on ALL matched pages at document-start
+    // Makes Firefox fully impersonate Chrome for JS detection
+    // ═══════════════════════════════════════════════════════
+
+    const CHROME_UA = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
+
+    // 1. userAgent string
+    try {
+        Object.defineProperty(navigator, 'userAgent', {
+            get: () => CHROME_UA,
+            configurable: true
+        });
+    } catch(e) {}
+
+    // 2. appVersion
+    try {
+        Object.defineProperty(navigator, 'appVersion', {
+            get: () => '5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+            configurable: true
+        });
+    } catch(e) {}
+
+    // 3. vendor — Firefox returns "", Chrome returns "Google Inc."
+    try {
+        Object.defineProperty(navigator, 'vendor', {
+            get: () => 'Google Inc.',
+            configurable: true
+        });
+    } catch(e) {}
+
+    // 4. platform
+    try {
+        Object.defineProperty(navigator, 'platform', {
+            get: () => 'Linux armv8l',
+            configurable: true
+        });
+    } catch(e) {}
+
+    // 5. window.chrome — Firefox has no window.chrome at all
+    // This is the most common single check used by sites
+    try {
+        if (!window.chrome) {
+            Object.defineProperty(window, 'chrome', {
+                value: {
+                    runtime:    {},
+                    loadTimes:  function() { return {}; },
+                    csi:        function() { return {}; },
+                    app:        {}
+                },
+                configurable: true,
+                writable:     true,
+                enumerable:   true
+            });
+        }
+    } catch(e) {}
+
+    // 6. navigator.userAgentData — Firefox does NOT implement this
+    // Chrome uses it for modern UA detection (Client Hints)
+    // We must create it from scratch
+    try {
+        const uaData = {
+            brands: [
+                { brand: 'Chromium',      version: '124' },
+                { brand: 'Google Chrome', version: '124' },
+                { brand: 'Not-A.Brand',   version: '99'  }
+            ],
+            mobile:   true,
+            platform: 'Android',
+            getHighEntropyValues: async function(hints) {
+                return {
+                    brands: [
+                        { brand: 'Chromium',      version: '124' },
+                        { brand: 'Google Chrome', version: '124' },
+                        { brand: 'Not-A.Brand',   version: '99'  }
+                    ],
+                    mobile:          true,
+                    platform:        'Android',
+                    platformVersion: '10.0.0',
+                    architecture:    'arm',
+                    bitness:         '64',
+                    model:           'K',
+                    uaFullVersion:   '124.0.0.0',
+                    fullVersionList: [
+                        { brand: 'Chromium',      version: '124.0.0.0' },
+                        { brand: 'Google Chrome', version: '124.0.0.0' },
+                        { brand: 'Not-A.Brand',   version: '99.0.0.0'  }
+                    ]
+                };
+            },
+            toJSON: function() {
+                return {
+                    brands:   this.brands,
+                    mobile:   this.mobile,
+                    platform: this.platform
+                };
+            }
+        };
+        Object.defineProperty(navigator, 'userAgentData', {
+            get: () => uaData,
+            configurable: true
+        });
+    } catch(e) {}
+
+    // 7. webdriver — should be false (automation detection)
+    try {
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => false,
+            configurable: true
+        });
+    } catch(e) {}
+
+    log('Chrome spoof applied on: ' + HOST);
+
+    // ═══════════════════════════════════════════════════════
+    // BLOCK B — LKSFY COUNTDOWN AUTO-SKIP
+    // Only runs on lksfy.com / linkshortify.com
+    // ═══════════════════════════════════════════════════════
+
+    if (!IS_LKSFY) return; // joker-verse only needs the spoof above
+
+    // Speed up setTimeout / setInterval
+    const _realSetTimeout  = window.setTimeout.bind(window);
+    const _realSetInterval = window.setInterval.bind(window);
+    window.setTimeout  = (fn, delay, ...args) => _realSetTimeout(fn,  Math.min(delay || 0, 50), ...args);
+    window.setInterval = (fn, delay, ...args) => _realSetInterval(fn, Math.min(delay || 0, 50), ...args);
+
+    // Fetch intercept
+    let interceptedUrl = null;
+    const _realFetch = window.fetch.bind(window);
+    window.fetch = async function (...args) {
+        const res = await _realFetch(...args);
+        res.clone().text().then(body => {
+            try {
+                const json = JSON.parse(body);
+                const url  = json?.url || json?.destination || json?.redirect || json?.link;
+                if (url && url.startsWith('http') && !url.includes('lksfy') && !url.includes('linkshortify')) {
+                    interceptedUrl = url;
+                    log('Fetch intercepted: ' + url);
+                }
+            } catch(_) {}
+        });
+        return res;
+    };
+
+    // XHR intercept
+    const _realXHROpen = XMLHttpRequest.prototype.open;
+    const _realXHRSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+        this._url = url;
+        return _realXHROpen.apply(this, [method, url, ...rest]);
+    };
+    XMLHttpRequest.prototype.send = function(...args) {
+        this.addEventListener('load', function() {
+            try {
+                const json = JSON.parse(this.responseText);
+                const url  = json?.url || json?.destination || json?.redirect || json?.link;
+                if (url && url.startsWith('http') && !url.includes('lksfy') && !url.includes('linkshortify')) {
+                    interceptedUrl = url;
+                    log('XHR intercepted: ' + url);
+                }
+            } catch(_) {}
+        });
+        return _realXHRSend.apply(this, args);
+    };
+
+    // Force window countdown variables to zero
+    const forceCountdownZero = () => {
+        ['counter','count','countdown','timer','seconds','time','sec','remaining'].forEach(key => {
+            if (typeof window[key] === 'number' && window[key] > 0) {
+                window[key] = 0;
+                log('Zeroed window.' + key);
+            }
+        });
+    };
+
+    const onReady = () => {
+
+        // Toast UI
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a2e; color: #e0e0e0;
+            padding: 10px 22px; border-radius: 22px;
+            font-size: 13px; font-family: sans-serif;
+            z-index: 999999; box-shadow: 0 4px 18px rgba(0,0,0,0.5);
+            border: 1px solid #333; pointer-events: none;
+            transition: opacity 0.4s; white-space: nowrap;
+        `;
+        toast.textContent = '⏳ Auto-Skip: Starting...';
+        document.body.appendChild(toast);
+
+        const setToast  = (msg, color) => { toast.textContent = msg; if (color) toast.style.color = color; };
+        const fadeToast = (ms = 3000)  => { setTimeout(() => { toast.style.opacity = '0'; }, ms); };
+
+        const PROCEED_WORDS = ['get link','continue','proceed','go','click here','visit','open','next'];
+        const SKIP_WORDS    = ['wait','please','loading','verif'];
+
+        const findReadyButton = () => {
+            for (const el of document.querySelectorAll('a, button, input[type="submit"], input[type="button"]')) {
+                if (el.disabled || el.offsetParent === null) continue;
+                const text = (el.innerText || el.value || el.textContent || '').toLowerCase().trim();
+                if (!text) continue;
+                if (SKIP_WORDS.some(w => text.includes(w))) continue;
+                if (PROCEED_WORDS.some(w => text.includes(w))) return el;
+            }
+            return null;
+        };
+
+        const findBySelector = () => {
+            for (const sel of ['#btn-main','.btn-main','a.btn','button[id*="go"]','a[id*="go"]','.skip-btn','#skip','button.btn','a[href*="go"]','.get-link','#get-link']) {
+                const el = document.querySelector(sel);
+                if (el && !el.disabled && !SKIP_WORDS.some(w => (el.innerText||'').toLowerCase().includes(w))) return el;
+            }
+            return null;
+        };
+
+        let clicked = false;
+        const doClick = (el, reason) => {
+            if (clicked) return;
+            clicked = true;
+            log('Clicking via: ' + reason);
+            setToast('✅ Done! Redirecting...', '#4caf50');
+            fadeToast(2500);
+            observer.disconnect();
+            clearInterval(pollTimer);
+            el.removeAttribute('disabled');
+            el.click();
+        };
+
+        const observer = new MutationObserver(() => {
+            const btn = findReadyButton() || findBySelector();
+            if (btn) doClick(btn, 'MutationObserver');
+        });
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+
+        const MAX_WAIT = 60000;
+        let elapsed = 0;
+
+        const pollTimer = setInterval(() => {
+            elapsed += 300;
+
+            if (interceptedUrl && !clicked) {
+                clicked = true;
+                observer.disconnect();
+                clearInterval(pollTimer);
+                setToast('✅ Done! Redirecting...', '#4caf50');
+                fadeToast(2500);
+                window.location.href = interceptedUrl;
+                return;
+            }
+
+            forceCountdownZero();
+            const btn = findReadyButton() || findBySelector();
+            if (btn) { doClick(btn, 'poll'); return; }
+
+            setToast('⏳ Auto-Skip: Waiting... (' + Math.round(elapsed / 1000) + 's)');
+
+            if (elapsed >= MAX_WAIT) {
+                setToast('❌ Timed out — tap manually', '#f44336');
+                fadeToast(6000);
+                observer.disconnect();
+                clearInterval(pollTimer);
+            }
+        }, 300);
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', onReady);
+    } else {
+        onReady();
+    }
+
+})();
