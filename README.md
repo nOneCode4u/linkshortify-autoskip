@@ -81,17 +81,6 @@ To manually check:
 
 ---
 
-## Similar Projects
-
-These support a much larger number of sites:
-
-- [Bypass All Shortlinks Debloated](https://codeberg.org/Amm0ni4/bypass-all-shortlinks-debloated)
-- [Bypass All Shortlinks (GreasyFork)](https://greasyfork.org/en/scripts/431691-bypass-all-shortlinks)
-- [AdsBypasser](https://github.com/adsbypasser/adsbypasser)
-- [bypass.city](https://bypass.city/)
-
----
-
 ## Disclaimer
 
 For personal use only on links you are legitimately accessing.
