@@ -21,54 +21,57 @@
 | Browser | Supported Managers |
 |---------|-------------------|
 | Chrome | [Tampermonkey](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) |
-| Firefox | [Greasemonkey](https://addons.mozilla.org/firefox/addon/greasemonkey/), [Tampermonkey](https://addons.mozilla.org/firefox/addon/tampermonkey/), [Violentmonkey](https://addons.mozilla.org/firefox/addon/violentmonkey/) |
+| Firefox | [Tampermonkey](https://addons.mozilla.org/firefox/addon/tampermonkey/), [Violentmonkey](https://addons.mozilla.org/firefox/addon/violentmonkey/), [Greasemonkey](https://addons.mozilla.org/firefox/addon/greasemonkey/) |
 | Safari | [Tampermonkey](https://apps.apple.com/app/tampermonkey/id1482490089), [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) |
-| Edge | [Tampermonkey](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd) |
+| Edge | [Tampermonkey](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd), [Violentmonkey](https://microsoftedge.microsoft.com/addons/detail/violentmonkey/eeagobfjdenkkddmbclomhiblgggliao) |
 | Opera | [Tampermonkey](https://addons.opera.com/extensions/details/tampermonkey-beta/), [Violentmonkey](https://violentmonkey.github.io/get-it/) |
+| Brave | [Tampermonkey](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo), [Violentmonkey](https://violentmonkey.github.io/get-it/) |
+| Vivaldi | [Tampermonkey](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo), [Violentmonkey](https://violentmonkey.github.io/get-it/) |
 | Maxthon | [Violentmonkey](https://violentmonkey.github.io/get-it/) |
+
+> ⚠️ **Note:** Violentmonkey is no longer supported on Chrome (Manifest V2 issue). Use Tampermonkey on Chrome instead.
 
 **Android**
 
 | Browser | Supported Managers |
 |---------|-------------------|
-| Firefox | [Greasemonkey](https://addons.mozilla.org/firefox/addon/greasemonkey/), [Tampermonkey](https://addons.mozilla.org/firefox/addon/tampermonkey/), [Violentmonkey](https://addons.mozilla.org/firefox/addon/violentmonkey/) |
-| Kiwi | [Tampermonkey](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo), [Violentmonkey](https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegedbjckiignlkbdflefd) |
+| Firefox | [Tampermonkey](https://addons.mozilla.org/firefox/addon/tampermonkey/), [Violentmonkey](https://addons.mozilla.org/firefox/addon/violentmonkey/), [Greasemonkey](https://addons.mozilla.org/firefox/addon/greasemonkey/) |
+| Kiwi | [Tampermonkey](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo), [Violentmonkey](https://violentmonkey.github.io/get-it/) |
 | Edge | [Tampermonkey](https://www.tampermonkey.net/) |
-| Maxthon | [Violentmonkey](https://violentmonkey.github.io/get-it/) |
 | Dolphin | [Tampermonkey](https://www.tampermonkey.net/) |
+| UC Browser | [Tampermonkey](https://www.tampermonkey.net/) |
+| Maxthon | [Violentmonkey](https://violentmonkey.github.io/get-it/) |
+| XBrowser | Built-in support |
 
 **iOS**
 
 | Browser | Supported Managers |
 |---------|-------------------|
-| Safari | [Tampermonkey](https://apps.apple.com/app/tampermonkey/id1482490089), [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) |
+| Safari | [Tampermonkey](https://apps.apple.com/app/tampermonkey/id6738342400), [Userscripts](https://apps.apple.com/app/userscripts/id1463298887) |
 
 ### Step 2 — Install uBlock Origin *(recommended)*
 
-Blocks ads on the shortener page. Available for [Firefox](https://addons.mozilla.org/firefox/addon/ublock-origin/) and [Chrome/Kiwi](https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm).
+Blocks ads on the shortener page.
+- [Firefox](https://addons.mozilla.org/firefox/addon/ublock-origin/)
+- [Chrome / Kiwi / Brave / Edge / Opera](https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm)
 
 ---
 
-## Install Script
+## Install
 
-Tap your preferred version — your userscript manager will prompt you automatically.
+Click the link below — your userscript manager will prompt you automatically.
 
-| Version | Description | Install |
-|---------|-------------|---------|
-| **Smart** ✅ *recommended* | On-screen status badge, most reliable | [Install](https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/versions/smart.user.js) |
-| Aggressive | Attempts instant skip | [Install](https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/versions/aggressive.user.js) |
-| Standard | With console debug logs | [Install](https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/versions/standard.user.js) |
-| Minimal | Silent, no extras | [Install](https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/versions/minimal.user.js) |
+### ➤ [Install smart.user.js](https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/versions/smart.user.js)
 
 ---
 
 ## Auto-Update
 
-All versions auto-update via your userscript manager.
+The script auto-updates via your userscript manager.
 
 To manually check:
-1. Open your userscript manager → tap/click the script
-2. Tap **Check for updates**
+1. Open your userscript manager → click/tap the script
+2. Click **Check for updates**
 
 ---
 
@@ -78,6 +81,17 @@ To manually check:
 |------|--------|
 | lksfy.com | ✅ Working |
 | linkshortify.com | ✅ Working |
+
+---
+
+## Similar Projects
+
+These support a much larger number of sites:
+
+- [Bypass All Shortlinks Debloated](https://github.com/gongchandang49/bypass-all-shortlinks-debloated) *(updated fork)*
+- [Bypass All Shortlinks (GreasyFork)](https://greasyfork.org/en/scripts/431691-bypass-all-shortlinks)
+- [AdsBypasser](https://github.com/adsbypasser/adsbypasser)
+- [bypass.city](https://bypass.city/)
 
 ---
 
