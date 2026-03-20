@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LinkShortify Auto-Skip
 // @namespace    https://github.com/nOneCode4u/linkshortify-autoskip
-// @version      3.1.0
+// @version      3.2.0
 // @description  Automatically bypasses countdowns, timers and ads on LinkShortify (lksfy.com)
 // @author       nOneCode4u
 // @match        *://lksfy.com/*
@@ -21,37 +21,48 @@
     // SITE CONFIG
     // Add new shortener sites here. Each entry needs:
     //   hosts     → hostname substrings to match
-    //   proceed   → words that appear on the "go" button
-    //   selectors → CSS selectors for the proceed button (fallback)
+    //   proceed   → words on the "go" button (text-based detection)
+    //   selectors → CSS selectors for the proceed button (selector-based detection)
+    //   bottomBtn → ID/selector of a multi-step button (optional)
+    //   bottomTxt → texts that signal the final step of that button (optional)
     // ─────────────────────────────────────────────────────────
     const SITES = [
         {
             hosts:     ['lksfy.com', 'linkshortify.com'],
-            proceed:   ['get link', 'continue', 'proceed', 'go', 'click here',
-                        'visit', 'open', 'next', 'get', 'access'],
-            selectors: ['#btn-main', '.btn-main', 'a.btn', 'button.btn',
-                        '[id*="go-link"]', '[id*="getlink"]', '[class*="get-link"]',
-                        '[id*="btn"]', '[class*="btn-get"]']
+            // Selectors verified from real-world bypass research
+            selectors: [
+                'a.get-link',                    // primary link button
+                '.get-link.btn-primary.btn',     // primary button variant
+                'a.get-link:not(.disabled)',     // non-disabled variant
+                '#bottomButton',                 // multi-step bottom button
+                'a.btn.btn-primary.btn-lg',      // generic large primary button
+                'a.btn:not(.disabled)',          // any non-disabled btn link
+                'button.btn:not([disabled])'    // any non-disabled button
+            ],
+            proceed:   ['get link', 'continue', 'proceed', 'click here',
+                        'visit link', 'open', 'access link', 'next', 'get'],
+            // Multi-step bottom button — checked separately with text matching
+            bottomBtn: '#bottomButton',
+            bottomTxt: ['get link', 'continue', 'click to continue', 'next', 'visit']
         }
         // Future site example:
-        // { hosts: ['example.com'], proceed: ['continue'], selectors: ['#skip'] }
+        // { hosts: ['example.com'], selectors: ['a.get-link'], proceed: ['continue'], bottomBtn: null }
     ];
 
     // ─────────────────────────────────────────────────────────
-    // INIT — match current page to config
+    // INIT
     // ─────────────────────────────────────────────────────────
     const HOST = window.location.hostname;
     const cfg  = SITES.find(s => s.hosts.some(h => HOST.includes(h)));
     if (!cfg) return;
 
     const L    = (m) => console.log('[skip]', m);
-    const SKIP = ['wait', 'please', 'loading', 'verif', 'second'];
+    const SKIP = ['wait', 'please', 'loading', 'verif', 'second', 'generating'];
 
     // ─────────────────────────────────────────────────────────
     // METHOD 1 — NETWORK INTERCEPT (hardest to patch)
-    // Hooks fetch() and XHR to capture the destination URL
-    // directly from API responses. Requires backend redesign
-    // to defeat — renaming buttons/classes has zero effect.
+    // Hooks fetch() and XHR to capture destination URL directly
+    // from API responses. Defeating this requires full backend redesign.
     // ─────────────────────────────────────────────────────────
     let destUrl = null;
 
@@ -61,15 +72,13 @@
     const tryExtract = (body) => {
         try {
             const j = JSON.parse(body);
-            // Check common API response field names
             const u = j?.url || j?.destination || j?.dest || j?.redirect
                    || j?.link || j?.target || j?.href || j?.data?.url
                    || j?.result?.url || j?.response?.url;
-            if (isExternal(u)) { destUrl = u; L('Network hit: ' + u); }
+            if (isExternal(u)) { destUrl = u; L('Network: ' + u); }
         } catch (_) {}
     };
 
-    // Hook fetch()
     const _fetch = window.fetch.bind(window);
     window.fetch = async (...a) => {
         const r = await _fetch(...a);
@@ -77,7 +86,6 @@
         return r;
     };
 
-    // Hook XHR
     const _xOpen = XMLHttpRequest.prototype.open;
     const _xSend = XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.open = function (m, u, ...r) {
@@ -90,20 +98,10 @@
 
     // ─────────────────────────────────────────────────────────
     // METHOD 2 — STATE TRANSITION WATCHER (hard to patch)
-    // Watches for ANY element changing from disabled→enabled
-    // Does not rely on IDs, classes, or text — purely behavioral.
-    // Defeating this requires not using disabled state at all.
+    // Detects elements changing from disabled → enabled state.
+    // Does not rely on IDs or class names — purely behavioral.
     // ─────────────────────────────────────────────────────────
     const wasDisabled = new WeakSet();
-
-    const checkTransition = (el) => {
-        if (!el || el.tagName === 'INPUT' && el.type === 'hidden') return null;
-        const wasOff = wasDisabled.has(el);
-        const isNowOn = !el.disabled && el.offsetParent !== null;
-        if (wasOff && isNowOn) return el;
-        if (el.disabled) wasDisabled.add(el);
-        return null;
-    };
 
     // ─────────────────────────────────────────────────────────
     // METHOD 3 — COUNTDOWN VARIABLE ZEROING
@@ -114,10 +112,9 @@
                       'time','sec','remaining','timeLeft','timerCount'];
         keys.forEach(k => {
             if (typeof window[k] === 'number' && window[k] > 0) {
-                window[k] = 0; L('Zeroed: ' + k);
+                window[k] = 0;
             }
         });
-        // Also zero any property on window that looks like a small countdown
         Object.keys(window).forEach(k => {
             if (typeof window[k] === 'number' && window[k] > 0 && window[k] < 120
                 && k.toLowerCase().match(/time|count|sec|tick|remain/)) {
@@ -127,39 +124,56 @@
     };
 
     // ─────────────────────────────────────────────────────────
-    // METHOD 4 — BUTTON DETECTION (text + selector fallback)
-    // Text detection is more resilient than selectors.
-    // Selectors are last resort fallback only.
+    // METHOD 4 — BUTTON DETECTION
+    // Selector-based (specific, fast) + text-based (resilient)
+    // Both verified against real lksfy.com page structure.
     // ─────────────────────────────────────────────────────────
-    const isReady = (el) => {
-        if (!el || el.disabled || el.offsetParent === null) return false;
+    const isClickable = (el) => {
+        if (!el) return false;
+        if (el.disabled) return false;
+        if (el.classList && el.classList.contains('disabled')) return false;
+        if (el.offsetParent === null) return false;
         const t = (el.innerText || el.value || el.textContent || '').toLowerCase().trim();
         return !SKIP.some(w => t.includes(w));
     };
 
+    const findBySelector = () => {
+        for (const sel of cfg.selectors) {
+            const el = document.querySelector(sel);
+            if (el && isClickable(el)) return el;
+        }
+        return null;
+    };
+
     const findByText = () => {
         for (const el of document.querySelectorAll('a,button,input[type=submit],input[type=button]')) {
-            if (!isReady(el)) continue;
+            if (!isClickable(el)) continue;
             const t = (el.innerText || el.value || el.textContent || '').toLowerCase();
             if (cfg.proceed.some(w => t.includes(w))) return el;
         }
         return null;
     };
 
-    const findBySelector = () => {
-        for (const s of cfg.selectors) {
-            const el = document.querySelector(s);
-            if (el && isReady(el)) return el;
-        }
+    // Special handler for #bottomButton — lksfy uses this as a
+    // multi-step button that changes text at each stage
+    const findBottomButton = () => {
+        if (!cfg.bottomBtn) return null;
+        const el = document.querySelector(cfg.bottomBtn);
+        if (!el) return null;
+        const text = (el.textContent || el.innerText || '').toLowerCase().trim();
+        const style = el.style.display;
+        // Must be visible and contain a proceed text
+        if (style === 'none') return null;
+        if (cfg.bottomTxt.some(w => text.includes(w))) return el;
         return null;
     };
 
     // ─────────────────────────────────────────────────────────
-    // DOM READY — start active phase
+    // DOM READY — active phase
     // ─────────────────────────────────────────────────────────
     const domReady = () => {
 
-        // Toast
+        // Toast UI
         const t = document.createElement('div');
         t.style.cssText = `
             position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
@@ -174,37 +188,39 @@
         const toast = (m, c) => { t.textContent = m; if (c) t.style.color = c; };
         const fade  = (ms=3000) => setTimeout(() => { t.style.opacity='0'; }, ms);
 
-        // Click
+        // Click handler
         let done = false;
         const go = (el, why) => {
             if (done) return;
             done = true;
-            L('Click via: ' + why);
+            L('Click: ' + why);
             toast('✅ Redirecting...', '#4caf50');
             fade(2500);
             obs.disconnect();
             clearInterval(poll);
             el.removeAttribute('disabled');
+            el.classList && el.classList.remove('disabled');
             el.click();
         };
 
-        // MutationObserver — reacts to ANY DOM change
+        // MutationObserver — reacts to DOM changes instantly
         const obs = new MutationObserver((mutations) => {
-            // Check state transitions first (Method 2)
             for (const m of mutations) {
+                // State transition check (Method 2)
+                if (m.type === 'attributes' && m.target) {
+                    const el = m.target;
+                    const wasOff = wasDisabled.has(el);
+                    if (wasOff && isClickable(el)) { go(el, 'transition'); return; }
+                    if (!isClickable(el)) wasDisabled.add(el);
+                }
                 for (const n of m.addedNodes) {
-                    if (n.nodeType === 1 && isReady(n)) {
-                        const t2 = (n.innerText||'').toLowerCase();
-                        if (cfg.proceed.some(w => t2.includes(w))) { go(n, 'added-node'); return; }
+                    if (n.nodeType === 1 && isClickable(n)) {
+                        const txt = (n.innerText||'').toLowerCase();
+                        if (cfg.proceed.some(w => txt.includes(w))) { go(n, 'added-node'); return; }
                     }
                 }
-                if (m.type === 'attributes' && m.target) {
-                    const el = checkTransition(m.target);
-                    if (el) { go(el, 'transition'); return; }
-                }
             }
-            // Then text + selector detection
-            const btn = findByText() || findBySelector();
+            const btn = findBottomButton() || findBySelector() || findByText();
             if (btn) go(btn, 'mutation-scan');
         });
         obs.observe(document.body, {
@@ -212,12 +228,12 @@
             attributes: true, attributeFilter: ['disabled', 'class', 'style']
         });
 
-        // Poll loop — safety net for all methods
+        // Poll loop — safety net
         let elapsed = 0;
         const poll = setInterval(() => {
             elapsed += 300;
 
-            // Method 1 result — best outcome
+            // Method 1 — direct redirect from intercepted URL
             if (destUrl && !done) {
                 done = true;
                 obs.disconnect();
@@ -230,7 +246,7 @@
 
             zeroCountdown(); // Method 3
 
-            const btn = findByText() || findBySelector(); // Method 4
+            const btn = findBottomButton() || findBySelector() || findByText(); // Method 4
             if (btn) { go(btn, 'poll'); return; }
 
             toast('⏳ Auto-Skip: Waiting... (' + Math.round(elapsed/1000) + 's)');
