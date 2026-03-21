@@ -61,7 +61,7 @@ Blocks ads on the shortener page.
 
 Click the link below — your userscript manager will prompt you automatically.
 
-### ➤ [Install smart.user.js](https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/versions/smart.user.js)
+### ➤ [Install linkshortify.user.js](https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/sites/linkshortify.user.js)
 
 ---
 
