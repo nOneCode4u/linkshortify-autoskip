@@ -1,14 +1,16 @@
 // ==UserScript==
 // @name         LinkShortify Auto-Skip
 // @namespace    https://github.com/nOneCode4u/linkshortify-autoskip
-// @version      3.3.0
+// @version      3.4.0
 // @description  Automatically bypasses countdowns, timers and ads on LinkShortify (lksfy.com)
 // @author       nOneCode4u
 // @match        *://lksfy.com/*
 // @match        *://*.lksfy.com/*
 // @match        *://linkshortify.com/*
 // @match        *://*.linkshortify.com/*
-// @grant        none
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_registerMenuCommand
 // @run-at       document-start
 // @updateURL    https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/sites/linkshortify.user.js
 // @downloadURL  https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/sites/linkshortify.user.js
@@ -56,6 +58,23 @@
     const SKIP = ['wait', 'please', 'loading', 'verif', 'second', 'generating'];
 
     // ─────────────────────────────────────────────────────────
+    // AUTO-REDIRECT TOGGLE
+    // Stored in userscript manager storage — persists across sessions.
+    // Accessible via the script manager popup menu (≡ or Tampermonkey icon).
+    // Default: ON (fully automatic).
+    // ─────────────────────────────────────────────────────────
+    let autoRedirect = GM_getValue('autoRedirect', true);
+
+    GM_registerMenuCommand(
+        (autoRedirect ? '🟢 Auto-Redirect: ON — click to disable' : '🔴 Auto-Redirect: OFF — click to enable'),
+        () => {
+            autoRedirect = !autoRedirect;
+            GM_setValue('autoRedirect', autoRedirect);
+            alert('LinkShortify Auto-Skip\nAuto-Redirect is now ' + (autoRedirect ? 'ON ✅' : 'OFF 🔴') + '\nReload the page to apply.');
+        }
+    );
+
+    // ─────────────────────────────────────────────────────────
     // METHOD 1 — NETWORK INTERCEPT
     // Hooks fetch() and XHR at document-start to capture the
     // destination URL directly from API responses.
@@ -97,8 +116,7 @@
     // METHOD 2 — STATE TRANSITION WATCHER
     // Detects elements changing disabled → enabled.
     // Purely behavioral — unaffected by ID/class renames.
-    // WeakSet is pre-seeded on domReady with all currently
-    // disabled elements so transitions are never missed.
+    // WeakSet pre-seeded on domReady so no transitions are missed.
     // ─────────────────────────────────────────────────────────
     const wasDisabled = new WeakSet();
 
@@ -112,7 +130,6 @@
         keys.forEach(k => {
             if (typeof window[k] === 'number' && window[k] > 0) window[k] = 0;
         });
-        // Also catch dynamically named countdown variables
         try {
             Object.keys(window).forEach(k => {
                 if (typeof window[k] === 'number' && window[k] > 0 && window[k] < 120
@@ -126,10 +143,7 @@
     // ─────────────────────────────────────────────────────────
     // METHOD 4 — BUTTON DETECTION
     // isClickable: unified check used by all detection paths.
-    // findBottomButton: handles lksfy's multi-step #bottomButton
-    //   which changes text at each stage — checked by text match.
-    //   Uses offsetParent (not just inline style) to detect all
-    //   hiding methods including CSS classes and computed styles.
+    // findBottomButton: lksfy's multi-step #bottomButton handler.
     // findBySelector: fast path using known CSS selectors.
     // findByText: resilient fallback using visible button text.
     // ─────────────────────────────────────────────────────────
@@ -146,7 +160,7 @@
         if (!cfg.bottomBtn) return null;
         const el = document.querySelector(cfg.bottomBtn);
         if (!el) return null;
-        if (el.offsetParent === null) return null;  // hidden by any method
+        if (el.offsetParent === null) return null;
         if (el.disabled || (el.classList && el.classList.contains('disabled'))) return null;
         const text = (el.textContent || el.innerText || '').toLowerCase().trim();
         if (cfg.bottomTxt.some(w => text.includes(w))) return el;
@@ -175,51 +189,102 @@
     // ─────────────────────────────────────────────────────────
     const domReady = () => {
 
-        // BUG FIX: Pre-seed wasDisabled with all currently disabled
-        // interactive elements so transition detection works immediately.
+        // Pre-seed wasDisabled with all currently disabled elements
         document.querySelectorAll('a,button,input[type=submit],input[type=button]')
             .forEach(el => { if (!isClickable(el)) wasDisabled.add(el); });
 
-        // Toast UI
-        const t = document.createElement('div');
-        t.style.cssText = `
+        // ── Toast UI ──────────────────────────────────────────
+        // Two modes:
+        //   Auto mode  → small status badge, auto-fades after redirect
+        //   Manual mode → persistent badge with a tap-to-proceed button
+        // ─────────────────────────────────────────────────────
+        const wrap = document.createElement('div');
+        wrap.style.cssText = `
             position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
             background:#1a1a2e;color:#e0e0e0;padding:10px 22px;
             border-radius:22px;font-size:13px;font-family:sans-serif;
             z-index:999999;box-shadow:0 4px 18px rgba(0,0,0,.5);
             border:1px solid #333;pointer-events:none;
             transition:opacity .4s;white-space:nowrap;
+            display:flex;align-items:center;gap:10px;
         `;
-        t.textContent = '⏳ Auto-Skip: Starting...';
-        document.body.appendChild(t);
-        const toast = (m, c) => { t.textContent = m; if (c) t.style.color = c; };
-        const fade  = (ms=3000) => setTimeout(() => { t.style.opacity='0'; }, ms);
 
-        // Click handler
+        const msg = document.createElement('span');
+        msg.textContent = '⏳ Auto-Skip: Starting...';
+        wrap.appendChild(msg);
+
+        // Proceed button — only shown in manual mode when ready
+        const proceedBtn = document.createElement('button');
+        proceedBtn.textContent = 'Proceed →';
+        proceedBtn.style.cssText = `
+            display:none;
+            background:#4caf50;color:#fff;border:none;
+            padding:5px 14px;border-radius:14px;font-size:13px;
+            cursor:pointer;pointer-events:all;
+            font-family:sans-serif;font-weight:600;
+        `;
+        wrap.appendChild(proceedBtn);
+        document.body.appendChild(wrap);
+
+        const toast   = (m, c) => { msg.textContent = m; if (c) msg.style.color = c; };
+        const fade    = (ms=3000) => setTimeout(() => { wrap.style.opacity='0'; }, ms);
+        const showBtn = (action) => {
+            wrap.style.pointerEvents = 'none';
+            proceedBtn.style.display = 'inline-block';
+            proceedBtn.style.pointerEvents = 'all';
+            proceedBtn.onclick = () => {
+                wrap.style.opacity = '0';
+                action();
+            };
+        };
+
+        // ── Final action ──────────────────────────────────────
+        // Called when the script has found the destination.
+        // Auto mode  → proceeds immediately.
+        // Manual mode → shows "Proceed →" button, waits for tap.
+        // ─────────────────────────────────────────────────────
+        const proceed = (action, readyMsg) => {
+            obs.disconnect();
+            clearInterval(poll);
+            if (autoRedirect) {
+                // Fully automatic
+                toast('✅ Redirecting...', '#4caf50');
+                fade(2500);
+                action();
+            } else {
+                // Manual — wait for user tap
+                toast(readyMsg || '✅ Ready!', '#4caf50');
+                showBtn(action);
+            }
+        };
+
+        // Click handler — for button-click path
         let done = false;
         const go = (el, why) => {
             if (done) return;
             done = true;
             L('Click: ' + why);
-            toast('✅ Redirecting...', '#4caf50');
-            fade(2500);
-            obs.disconnect();
-            clearInterval(poll);
             el.removeAttribute('disabled');
             el.classList && el.classList.remove('disabled');
-            el.click();
+            proceed(() => el.click(), '✅ Ready — tap to proceed');
         };
 
-        // MutationObserver — reacts to any DOM change instantly
+        // URL redirect handler — for network intercept path
+        const goUrl = (url) => {
+            if (done) return;
+            done = true;
+            L('URL: ' + url);
+            proceed(() => { window.location.href = url; }, '✅ Ready — tap to proceed');
+        };
+
+        // ── MutationObserver ──────────────────────────────────
         const obs = new MutationObserver((mutations) => {
             for (const m of mutations) {
-                // Method 2 — state transition
                 if (m.type === 'attributes' && m.target) {
                     const el = m.target;
                     if (wasDisabled.has(el) && isClickable(el)) { go(el, 'transition'); return; }
                     if (!isClickable(el)) wasDisabled.add(el);
                 }
-                // Newly added elements
                 for (const n of m.addedNodes) {
                     if (n.nodeType === 1 && isClickable(n)) {
                         const txt = (n.innerText||'').toLowerCase();
@@ -235,25 +300,16 @@
             attributes: true, attributeFilter: ['disabled', 'class', 'style']
         });
 
-        // Poll loop — safety net for all methods
+        // ── Poll loop — safety net ────────────────────────────
         let elapsed = 0;
         const poll = setInterval(() => {
             elapsed += 300;
 
-            // Method 1 — best case: redirect directly from intercepted URL
-            if (destUrl && !done) {
-                done = true;
-                obs.disconnect();
-                clearInterval(poll);
-                toast('✅ Redirecting...', '#4caf50');
-                fade(2500);
-                window.location.href = destUrl;
-                return;
-            }
+            if (destUrl && !done) { goUrl(destUrl); return; }
 
-            zeroCountdown(); // Method 3
+            zeroCountdown();
 
-            const btn = findBottomButton() || findBySelector() || findByText(); // Method 4
+            const btn = findBottomButton() || findBySelector() || findByText();
             if (btn) { go(btn, 'poll'); return; }
 
             toast('⏳ Auto-Skip: Waiting... (' + Math.round(elapsed/1000) + 's)');
