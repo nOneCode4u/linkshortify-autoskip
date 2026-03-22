@@ -103,4 +103,4 @@ For personal use only on links you are legitimately accessing.
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE)
