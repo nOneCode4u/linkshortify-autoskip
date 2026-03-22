@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         LinkShortify Auto-Skip
-// @namespace    https://github.com/nOneCode4u/linkshortify-autoskip
+// @namespace    https://github.com/nOneCode4u/bypass-autoskip
 // @version      3.5.0
 // @description  Automatically bypasses countdowns, timers and ads on LinkShortify (lksfy.com)
 // @author       nOneCode4u
@@ -13,8 +13,8 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // @run-at       document-start
-// @updateURL    https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/sites/linkshortify.user.js
-// @downloadURL  https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/sites/linkshortify.user.js
+// @updateURL    https://raw.githubusercontent.com/nOneCode4u/bypass-autoskip/main/sites/linkshortify.user.js
+// @downloadURL  https://raw.githubusercontent.com/nOneCode4u/bypass-autoskip/main/sites/linkshortify.user.js
 // ==/UserScript==
 
 (function () {
