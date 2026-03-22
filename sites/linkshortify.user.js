@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LinkShortify Auto-Skip
 // @namespace    https://github.com/nOneCode4u/linkshortify-autoskip
-// @version      3.4.0
+// @version      3.5.0
 // @description  Automatically bypasses countdowns, timers and ads on LinkShortify (lksfy.com)
 // @author       nOneCode4u
 // @match        *://lksfy.com/*
@@ -11,6 +11,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
 // @run-at       document-start
 // @updateURL    https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/sites/linkshortify.user.js
 // @downloadURL  https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/sites/linkshortify.user.js
@@ -18,6 +19,35 @@
 
 (function () {
     'use strict';
+
+    // ─────────────────────────────────────────────────────────
+    // AUTO-REDIRECT TOGGLE
+    // Registered first — before any page checks — so it always
+    // appears in the script manager menu on every matched page.
+    // GM_unregisterMenuCommand removes the old label instantly
+    // and re-registers with the new one on every toggle.
+    // Default: ON (fully automatic).
+    // ─────────────────────────────────────────────────────────
+    let autoRedirect = GM_getValue('autoRedirect', true);
+    let menuId;
+
+    const updateMenu = () => {
+        if (menuId !== undefined) {
+            try { GM_unregisterMenuCommand(menuId); } catch (_) {}
+        }
+        menuId = GM_registerMenuCommand(
+            autoRedirect
+                ? '🟢 Auto-Redirect: ON  —  click to disable'
+                : '🔴 Auto-Redirect: OFF  —  click to enable',
+            () => {
+                autoRedirect = !autoRedirect;
+                GM_setValue('autoRedirect', autoRedirect);
+                updateMenu(); // instantly refreshes the menu label
+            }
+        );
+    };
+
+    updateMenu(); // register immediately on every page load
 
     // ─────────────────────────────────────────────────────────
     // SITE CONFIG
@@ -56,23 +86,6 @@
 
     const L    = (m) => console.log('[skip]', m);
     const SKIP = ['wait', 'please', 'loading', 'verif', 'second', 'generating'];
-
-    // ─────────────────────────────────────────────────────────
-    // AUTO-REDIRECT TOGGLE
-    // Stored in userscript manager storage — persists across sessions.
-    // Accessible via the script manager popup menu (≡ or Tampermonkey icon).
-    // Default: ON (fully automatic).
-    // ─────────────────────────────────────────────────────────
-    let autoRedirect = GM_getValue('autoRedirect', true);
-
-    GM_registerMenuCommand(
-        (autoRedirect ? '🟢 Auto-Redirect: ON — click to disable' : '🔴 Auto-Redirect: OFF — click to enable'),
-        () => {
-            autoRedirect = !autoRedirect;
-            GM_setValue('autoRedirect', autoRedirect);
-            alert('LinkShortify Auto-Skip\nAuto-Redirect is now ' + (autoRedirect ? 'ON ✅' : 'OFF 🔴') + '\nReload the page to apply.');
-        }
-    );
 
     // ─────────────────────────────────────────────────────────
     // METHOD 1 — NETWORK INTERCEPT
@@ -142,10 +155,6 @@
 
     // ─────────────────────────────────────────────────────────
     // METHOD 4 — BUTTON DETECTION
-    // isClickable: unified check used by all detection paths.
-    // findBottomButton: lksfy's multi-step #bottomButton handler.
-    // findBySelector: fast path using known CSS selectors.
-    // findByText: resilient fallback using visible button text.
     // ─────────────────────────────────────────────────────────
     const isClickable = (el) => {
         if (!el) return false;
@@ -194,10 +203,6 @@
             .forEach(el => { if (!isClickable(el)) wasDisabled.add(el); });
 
         // ── Toast UI ──────────────────────────────────────────
-        // Two modes:
-        //   Auto mode  → small status badge, auto-fades after redirect
-        //   Manual mode → persistent badge with a tap-to-proceed button
-        // ─────────────────────────────────────────────────────
         const wrap = document.createElement('div');
         wrap.style.cssText = `
             position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
@@ -213,7 +218,6 @@
         msg.textContent = '⏳ Auto-Skip: Starting...';
         wrap.appendChild(msg);
 
-        // Proceed button — only shown in manual mode when ready
         const proceedBtn = document.createElement('button');
         proceedBtn.textContent = 'Proceed →';
         proceedBtn.style.cssText = `
@@ -232,33 +236,23 @@
             wrap.style.pointerEvents = 'none';
             proceedBtn.style.display = 'inline-block';
             proceedBtn.style.pointerEvents = 'all';
-            proceedBtn.onclick = () => {
-                wrap.style.opacity = '0';
-                action();
-            };
+            proceedBtn.onclick = () => { wrap.style.opacity='0'; action(); };
         };
 
-        // ── Final action ──────────────────────────────────────
-        // Called when the script has found the destination.
-        // Auto mode  → proceeds immediately.
-        // Manual mode → shows "Proceed →" button, waits for tap.
-        // ─────────────────────────────────────────────────────
+        // ── Final proceed ─────────────────────────────────────
         const proceed = (action, readyMsg) => {
             obs.disconnect();
             clearInterval(poll);
             if (autoRedirect) {
-                // Fully automatic
                 toast('✅ Redirecting...', '#4caf50');
                 fade(2500);
                 action();
             } else {
-                // Manual — wait for user tap
                 toast(readyMsg || '✅ Ready!', '#4caf50');
                 showBtn(action);
             }
         };
 
-        // Click handler — for button-click path
         let done = false;
         const go = (el, why) => {
             if (done) return;
@@ -269,7 +263,6 @@
             proceed(() => el.click(), '✅ Ready — tap to proceed');
         };
 
-        // URL redirect handler — for network intercept path
         const goUrl = (url) => {
             if (done) return;
             done = true;
