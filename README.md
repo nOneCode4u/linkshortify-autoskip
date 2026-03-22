@@ -1,12 +1,13 @@
-# linkshortify-autoskip
+# bypass-autoskip
 
-> A lightweight userscript that automatically bypasses countdowns and ads on **LinkShortify (lksfy.com)**.
+> Userscripts that automatically bypass countdowns, ads, and timers on supported sites.
 
 ---
 
 ## What it does
 
-- ⏩ Automatically clicks through the countdown timer
+- ⏩ Automatically clicks through countdown timers
+- 🔒 Waits for CAPTCHA when required (cannot bypass — human input needed)
 - 🔕 Shows a small on-screen status badge
 - 🔄 Auto-updates via your userscript manager
 
@@ -51,23 +52,26 @@
 
 ### Step 2 — Install uBlock Origin *(recommended)*
 
-Blocks ads on the shortener page.
+Blocks ads on shortener pages.
 - [Firefox](https://addons.mozilla.org/firefox/addon/ublock-origin/)
 - [Chrome / Kiwi / Brave / Edge / Opera](https://chromewebstore.google.com/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm)
 
 ---
 
-## Install
+## Install Scripts
 
-Click the link below — your userscript manager will prompt you automatically.
+Tap a link — your userscript manager will prompt you automatically.
 
-### ➤ [Install linkshortify.user.js](https://raw.githubusercontent.com/nOneCode4u/linkshortify-autoskip/main/sites/linkshortify.user.js)
+| Site | Script | Notes |
+|------|--------|-------|
+| lksfy.com / linkshortify.com | [Install](https://raw.githubusercontent.com/nOneCode4u/bypass-autoskip/main/sites/linkshortify.user.js) | Fully automatic |
+| mega4upload.net | [Install](https://raw.githubusercontent.com/nOneCode4u/bypass-autoskip/main/sites/mega4upload.user.js) | Auto-clicks steps 1 & 3. You must solve the CAPTCHA manually |
 
 ---
 
 ## Auto-Update
 
-The script auto-updates via your userscript manager.
+All scripts auto-update via your userscript manager.
 
 To manually check:
 1. Open your userscript manager → click/tap the script
@@ -77,10 +81,11 @@ To manually check:
 
 ## Supported Sites
 
-| Site | Status |
-|------|--------|
-| lksfy.com | ✅ Working |
-| linkshortify.com | ✅ Working |
+| Site | Status | Notes |
+|------|--------|-------|
+| lksfy.com | ✅ Working | Fully automatic |
+| linkshortify.com | ✅ Working | Fully automatic |
+| mega4upload.net | ✅ Working | CAPTCHA required (human) |
 
 ---
 
@@ -103,4 +108,4 @@ For personal use only on links you are legitimately accessing.
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT
